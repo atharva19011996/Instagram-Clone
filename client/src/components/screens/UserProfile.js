@@ -6,6 +6,8 @@ const Profile = () => {
   const [userProfile, setProfile] = useState(null);
   const { state, dispatch } = useContext(UserContext);
   const { userid } = useParams();
+  const [showfollow, setShowFollow] = useState(true);
+
   useEffect(() => {
     fetch(`/user/${userid}`, {
       headers: {
@@ -32,7 +34,6 @@ const Profile = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log(data);
         dispatch({
           type: "UPDATE",
           payload: { following: data.following, followers: data.followers },
@@ -41,12 +42,49 @@ const Profile = () => {
         setProfile((prevState) => {
           return {
             ...prevState,
-            user: data,
+            user: {
+              ...prevState.user,
+              followers: [...prevState.user.followers, data._id],
+            },
           };
         });
+        setShowFollow(false);
       });
   };
+  const unfollowUser = () => {
+    fetch("/unfollow", {
+      method: "put",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + localStorage.getItem("jwt"),
+      },
+      body: JSON.stringify({
+        unfollowId: userid,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        dispatch({
+          type: "UPDATE",
+          payload: { following: data.following, followers: data.followers },
+        });
+        localStorage.setItem("user", JSON.stringify(data));
 
+        setProfile((prevState) => {
+          const newFollower = prevState.user.followers.filter(
+            (item) => item != data._id
+          );
+          return {
+            ...prevState,
+            user: {
+              ...prevState.user,
+              followers: newFollower,
+            },
+          };
+        });
+        setShowFollow(true);
+      });
+  };
   return (
     <>
       {userProfile ? (
@@ -83,12 +121,23 @@ const Profile = () => {
                 <h6>{userProfile.user.followers.length} Followers</h6>
                 <h6>{userProfile.user.following.length} Following</h6>
               </div>
-              <button
-                className="btn waves-effect waves-light #64b5f6 blue darken-1"
-                onClick={() => followUser()}
-              >
-                Follow
-              </button>
+              {showfollow ? (
+                <button
+                  style={{ margin: "10px" }}
+                  className="btn waves-effect waves-light #64b5f6 blue darken-1"
+                  onClick={() => followUser()}
+                >
+                  Follow
+                </button>
+              ) : (
+                <button
+                  style={{ margin: "10px" }}
+                  className="btn waves-effect waves-light #64b5f6 blue darken-1"
+                  onClick={() => unfollowUser()}
+                >
+                  UnFollow
+                </button>
+              )}
             </div>
           </div>
           <div className="gallery">
